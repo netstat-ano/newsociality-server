@@ -1,0 +1,7 @@
+{
+    "env": {
+        "DB_NAME": "tsuso",
+        "DB_PASSWORD": "PBlsw9KEBrKVYiv6",
+        "SECRET_KEY": "secretkey"
+    }
+}
