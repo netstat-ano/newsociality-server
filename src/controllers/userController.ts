@@ -4,6 +4,7 @@ import { validationResult } from "express-validator";
 import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import formatValidationErrors from "../utils/formatValidationErrors";
+import path from "path";
 interface CreateUserRequst extends Request {
     body: {
         email: string;
@@ -26,6 +27,8 @@ const postCreateUser = async (
             message: messages,
             userId: undefined,
             token: undefined,
+            avatarUrl: undefined,
+            username: undefined,
         });
     }
     const isEmailExist = await User.findOne({ email: req.body.email });
@@ -35,6 +38,8 @@ const postCreateUser = async (
             message: "E-mail is already registered.",
             userId: undefined,
             token: undefined,
+            avatarUrl: undefined,
+            username: undefined,
         });
     }
     const isUsernameExist = await User.findOne({ username: req.body.username });
@@ -44,6 +49,8 @@ const postCreateUser = async (
             message: "Username is already registered.",
             userId: undefined,
             token: undefined,
+            avatarUrl: undefined,
+            username: undefined,
         });
     }
     const hashedPassword = await bcryptjs.hash(req.body.password, 12);
@@ -51,13 +58,15 @@ const postCreateUser = async (
         email: req.body.email,
         username: req.body.username,
         password: hashedPassword,
+        avatarUrl: path.join("public", "images", "default-avatar.png"),
     });
     await user.save();
     let expiresTime = "1h";
     var token = jsonwebtoken.sign(
         {
             email: user.email,
-            id: user._id,
+            userId: user._id,
+            username: user.username,
         },
         process.env.SECRET_KEY!,
         { expiresIn: expiresTime }
@@ -68,6 +77,8 @@ const postCreateUser = async (
         userId: user._id,
         ok: true,
         message: "User succesfully created and logged in.",
+        avatarUrl: user.avatarUrl,
+        username: user.username,
     });
 };
 
@@ -94,6 +105,7 @@ const postLoginUser = async (
             message: messages,
             userId: undefined,
             token: undefined,
+            username: undefined,
         });
     }
     const user = await User.findOne({ email: req.body.email });
@@ -107,7 +119,8 @@ const postLoginUser = async (
             var token = jsonwebtoken.sign(
                 {
                     email: user.email,
-                    id: user._id,
+                    userId: user._id,
+                    username: user.username,
                 },
                 process.env.SECRET_KEY!,
                 { expiresIn: expiresTime }
@@ -116,6 +129,8 @@ const postLoginUser = async (
             return res.status(200).json({
                 token: token,
                 userId: user._id,
+                avatarUrl: user.avatarUrl,
+                username: user.username,
                 ok: true,
                 message: "User succesfully logged in.",
             });
@@ -124,6 +139,8 @@ const postLoginUser = async (
             ok: false,
             token: undefined,
             userId: undefined,
+            avatarUrl: undefined,
+            username: undefined,
             message: "User can't log in.",
         });
     }
@@ -131,7 +148,9 @@ const postLoginUser = async (
         ok: false,
         token: undefined,
         userId: undefined,
+        username: undefined,
         message: "User not founded.",
+        avatarUrl: undefined,
     });
 };
 export default { postCreateUser, postLoginUser };
