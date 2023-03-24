@@ -141,7 +141,7 @@ const postLoginUser = async (
             userId: undefined,
             avatarUrl: undefined,
             username: undefined,
-            message: "User can't log in.",
+            message: "Wrong e-mail or password.",
         });
     }
     return res.status(403).json({
@@ -149,7 +149,7 @@ const postLoginUser = async (
         token: undefined,
         userId: undefined,
         username: undefined,
-        message: "User not founded.",
+        message: "Wrong e-mail or password.",
         avatarUrl: undefined,
     });
 };

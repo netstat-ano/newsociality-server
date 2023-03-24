@@ -61,17 +61,10 @@ const postFetchPostsByTag = async (
     next: NextFunction
 ) => {
     const posts = await Post.find({ tags: `#${req.body.tag}` })
-        .select("userId postText tags createdAt updatedAt imgUrl")
+        .select("userId postText tags createdAt updatedAt imgUrl likes")
         .populate<{
             userId: IUser;
         }>("userId", "username avatarUrl")
-        // .populate<{ userId: IUser }>({
-        //     path: "comments",
-        //     populate: {
-        //         path: "userId",
-        //         select: "username avatarUrl",
-        //     },
-        // })
         .sort({ createdAt: "descending" });
     if (posts.length > 0) {
         return res.status(200).json({
@@ -130,6 +123,7 @@ interface CommentCreationBody extends AuthenticationRequest {
         commentText: string;
         postId: string;
     };
+    file?: any;
 }
 
 const postCreateComment = async (
@@ -147,20 +141,78 @@ const postCreateComment = async (
     }
     const post = await Post.findById(req.body.postId);
     if (req.user) {
-        post?.comments.push({
-            userId: req.user,
-            commentText: req.body.commentText,
-        });
-
+        if (req.file) {
+            var index = post!.comments.push({
+                userId: req.user._id,
+                commentText: req.body.commentText,
+                imageUrl: `/public/images/${req.file.filename}`,
+            });
+        } else {
+            var index = post!.comments.push({
+                userId: req.user._id,
+                commentText: req.body.commentText,
+            });
+        }
         await post?.save();
 
-        return res.status(201).json({ ok: true, message: "Comment added." });
+        return res.status(201).json({
+            ok: true,
+            message: "Comment added.",
+            addedComment: post!.comments[index - 1],
+        });
     }
-    return res.status(404).json({ ok: false, message: "Post not found." });
+    return res
+        .status(404)
+        .json({ ok: false, message: "Post not found.", addedComment: {} });
 };
+
+interface LikePostBody extends AuthenticationRequest {
+    body: {
+        id: string;
+    };
+}
+
+const postLikePost = async (
+    req: LikePostBody,
+    res: Response,
+    next: NextFunction
+) => {
+    const post = await Post.findById(req.body.id);
+    const user = req.user;
+    if (post) {
+        if (user?.likedPost.includes(req.body.id)) {
+            if (post.likes) {
+                post.likes -= 1;
+            } else {
+                post.likes = 0;
+            }
+            user.likedPost.splice(user.likedPost.indexOf(req.body.id), 1);
+            await user.save();
+            await post.save();
+            return res
+                .status(200)
+                .json({ ok: true, message: "DISLIKED", likes: post.likes });
+        } else if (user) {
+            if (post.likes) {
+                post.likes += 0;
+            } else {
+                post.likes = 1;
+            }
+            await post.save();
+            user.likedPost.push(req.body.id);
+            await user.save();
+            return res
+                .status(200)
+                .json({ message: "LIKED", ok: true, likes: post.likes });
+        }
+    }
+    return res.status(404).json({ ok: false, message: "Post not founded" });
+};
+
 export default {
     postCreatePost,
     postFetchPostsByTag,
     postFetchCommentsByPostId,
     postCreateComment,
+    postLikePost,
 };

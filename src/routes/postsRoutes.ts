@@ -27,4 +27,5 @@ postRoutes.post(
     postController.postFetchCommentsByPostId
 );
 postRoutes.post("/fetch-posts-by-tag", postController.postFetchPostsByTag);
+postRoutes.post("/like-post", isAuth, postController.postLikePost);
 export default postRoutes;
