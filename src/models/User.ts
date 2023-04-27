@@ -5,6 +5,7 @@ export interface IUser {
     password: string;
     avatarUrl: string;
     likedPost: string[];
+    likedComment: string[];
 }
 
 const userSchema = new Schema<IUser>({
@@ -13,6 +14,7 @@ const userSchema = new Schema<IUser>({
     password: { type: String, required: true },
     avatarUrl: { type: String, required: false },
     likedPost: { type: [String], required: false },
+    likedComment: { type: [String], required: false },
 });
 const User = model<IUser>("User", userSchema);
 export default User;

@@ -5,6 +5,7 @@ export interface IComment {
     userId: PopulatedDoc<IUser>;
     likes?: number;
     imageUrl?: string;
+    _id?: string;
 }
 
 const commentSchema = new Schema<IComment>(
@@ -13,6 +14,7 @@ const commentSchema = new Schema<IComment>(
         commentText: { type: String, required: true },
         likes: { type: Schema.Types.Number, required: false },
         imageUrl: { type: String, required: false },
+        _id: { type: String, required: false },
     },
     { timestamps: true }
 );

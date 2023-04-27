@@ -28,4 +28,9 @@ postRoutes.post(
 );
 postRoutes.post("/fetch-posts-by-tag", postController.postFetchPostsByTag);
 postRoutes.post("/like-post", isAuth, postController.postLikePost);
+postRoutes.post(
+    "/check-like-status-by-id",
+    isAuth,
+    postController.postCheckLikeStatusById
+);
 export default postRoutes;

@@ -194,7 +194,7 @@ const postLikePost = async (
                 .json({ ok: true, message: "DISLIKED", likes: post.likes });
         } else if (user) {
             if (post.likes) {
-                post.likes += 0;
+                post.likes += 1;
             } else {
                 post.likes = 1;
             }
@@ -209,10 +209,32 @@ const postLikePost = async (
     return res.status(404).json({ ok: false, message: "Post not founded" });
 };
 
+interface CheckLikeStatusBody extends AuthenticationRequest {
+    body: {
+        id: string;
+    };
+}
+const postCheckLikeStatusById = (
+    req: CheckLikeStatusBody,
+    res: Response,
+    next: NextFunction
+) => {
+    if (req.user) {
+        const findedPid = req.user.likedPost.find((pid) => pid === req.body.id);
+        if (findedPid) {
+            return res.status(200).json({ ok: true, message: "LIKED" });
+        } else {
+            return res.status(200).json({ ok: false, message: "NOT LIKED" });
+        }
+    }
+    return res.status(200).json({ ok: false, message: "NOT LIKED" });
+};
+
 export default {
     postCreatePost,
     postFetchPostsByTag,
     postFetchCommentsByPostId,
     postCreateComment,
     postLikePost,
+    postCheckLikeStatusById,
 };

@@ -6,6 +6,7 @@ import postRoutes from "./routes/postsRoutes";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
+import commentsRoutes from "./routes/commentsRoutes";
 const app = async () => {
     const app = express();
     connect();
@@ -44,6 +45,7 @@ const app = async () => {
     });
     app.use(multer({ storage: storage }).single("image"));
     app.use(bodyParser.json());
+    app.use("/comment", commentsRoutes);
     app.use("/auth", userRoutes);
     app.use("/posts", postRoutes);
     app.listen(8080);
