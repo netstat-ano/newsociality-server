@@ -43,11 +43,18 @@ const app = async () => {
         );
         next();
     });
-    app.use(multer({ storage: storage }).single("image"));
     app.use(bodyParser.json());
-    app.use("/comment", commentsRoutes);
-    app.use("/auth", userRoutes);
-    app.use("/posts", postRoutes);
+    app.use(
+        "/comment",
+        multer({ storage: storage }).single("image"),
+        commentsRoutes
+    );
+    app.use(
+        "/auth",
+        multer({ storage: storage }).single("newAvatar"),
+        userRoutes
+    );
+    app.use("/posts", multer({ storage: storage }).single("image"), postRoutes);
     app.listen(8080);
 };
 app();

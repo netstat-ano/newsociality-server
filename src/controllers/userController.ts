@@ -5,6 +5,7 @@ import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import formatValidationErrors from "../utils/formatValidationErrors";
 import path from "path";
+import AuthenticationRequest from "../interfaces/AuthenticationRequest";
 interface CreateUserRequst extends Request {
     body: {
         email: string;
@@ -153,4 +154,31 @@ const postLoginUser = async (
         avatarUrl: undefined,
     });
 };
-export default { postCreateUser, postLoginUser };
+
+interface ChangeAvatarBody extends AuthenticationRequest {
+    body: {
+        id: string;
+    };
+    file?: any;
+}
+
+const postChangeAvatar = async (
+    req: ChangeAvatarBody,
+    res: Response,
+    next: NextFunction
+) => {
+    if (req.user && req.file.path) {
+        req.user.avatarUrl = req.file.path;
+        await req.user.save();
+        return res
+            .status(200)
+            .json({
+                message: "Avatar changed.",
+                ok: true,
+                path: req.file.path,
+            });
+    }
+
+    return res.status(200).json({ message: "Avatar not changed.", ok: false });
+};
+export default { postCreateUser, postLoginUser, postChangeAvatar };

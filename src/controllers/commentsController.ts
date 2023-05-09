@@ -62,7 +62,7 @@ const postCheckLikeCommentStatusById = (
 ) => {
     const comment = req.user?.likedComment.find((id) => id === req.body.id);
     if (comment) {
-        res.status(200).json({ ok: true, message: "LIKED" });
+        return res.status(200).json({ ok: true, message: "LIKED" });
     }
     return res.status(200).json({ ok: false, message: "NOT LIKED" });
 };

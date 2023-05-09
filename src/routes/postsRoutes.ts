@@ -33,4 +33,5 @@ postRoutes.post(
     isAuth,
     postController.postCheckLikeStatusById
 );
+postRoutes.post("/fetch-popular-posts", postController.postFetchPopularPosts);
 export default postRoutes;

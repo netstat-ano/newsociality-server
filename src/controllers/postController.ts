@@ -52,6 +52,7 @@ const postCreatePost = async (
 interface PostFetchingBody extends Express.Request {
     body: {
         tag: string;
+        page: string;
     };
 }
 
@@ -60,23 +61,29 @@ const postFetchPostsByTag = async (
     res: Response,
     next: NextFunction
 ) => {
+    const page = Number(req.body.page);
+    const postCount = await Post.count();
     const posts = await Post.find({ tags: `#${req.body.tag}` })
         .select("userId postText tags createdAt updatedAt imgUrl likes")
         .populate<{
             userId: IUser;
         }>("userId", "username avatarUrl")
+        .skip(page * 40)
+        .limit(40)
         .sort({ createdAt: "descending" });
     if (posts.length > 0) {
         return res.status(200).json({
             posts,
             ok: true,
             message: "Posts founded successfully.",
+            lastPage: (page * 40) / postCount < 1 ? true : false,
         });
     } else {
         return res.status(404).json({
             posts: [],
             ok: false,
             message: "Posts not founded.",
+            lastPage: true,
         });
     }
 };
@@ -230,6 +237,46 @@ const postCheckLikeStatusById = (
     return res.status(200).json({ ok: false, message: "NOT LIKED" });
 };
 
+interface FetchPopularPostsBody extends AuthenticationRequest {
+    body: {
+        page?: string;
+        popularTime: Date;
+    };
+}
+
+const postFetchPopularPosts = async (
+    req: FetchPopularPostsBody,
+    res: Response,
+    next: NextFunction
+) => {
+    const page = Number(req.body.page);
+    const postCount = await Post.count();
+    const posts = await Post.find({
+        createdAt: { $gte: req.body.popularTime },
+    })
+        .select("userId postText tags createdAt updatedAt imgUrl likes")
+        .populate<{
+            userId: IUser;
+        }>("userId", "username avatarUrl")
+        .skip(page * 40)
+        .limit(40)
+        .sort({ likes: "descending" });
+    if (posts.length > 0) {
+        return res.status(200).json({
+            posts,
+            ok: true,
+            message: "Posts founded successfully.",
+            lastPage: (page * 40) / postCount < 1 ? true : false,
+        });
+    } else {
+        return res.status(404).json({
+            posts: [],
+            ok: false,
+            message: "Posts not founded.",
+            lastPage: true,
+        });
+    }
+};
 export default {
     postCreatePost,
     postFetchPostsByTag,
@@ -237,4 +284,5 @@ export default {
     postCreateComment,
     postLikePost,
     postCheckLikeStatusById,
+    postFetchPopularPosts,
 };

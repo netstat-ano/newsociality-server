@@ -1,6 +1,7 @@
 import express from "express";
 import userController from "../controllers/userController";
 import { body } from "express-validator";
+import isAuth from "../middlewares/is-auth";
 const userRoutes = express.Router();
 
 userRoutes.post(
@@ -28,4 +29,5 @@ userRoutes.post(
     userController.postLoginUser
 );
 
+userRoutes.post("/change-avatar", isAuth, userController.postChangeAvatar);
 export default userRoutes;
