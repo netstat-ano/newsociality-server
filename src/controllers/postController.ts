@@ -5,6 +5,7 @@ import { validationResult } from "express-validator";
 import formatValidationErrors from "../utils/formatValidationErrors";
 import User, { IUser } from "../models/User";
 import { IComment } from "../models/Comment";
+import mongoose from "mongoose";
 import { ObjectId } from "mongoose";
 interface PostCreationBody extends AuthenticationRequest {
     body: {
@@ -44,9 +45,11 @@ const postCreatePost = async (
         });
     }
     await post.save();
-    return res
-        .status(201)
-        .json({ ok: true, message: "Post created successfully." });
+    return res.status(201).json({
+        ok: true,
+        message: "Post created successfully.",
+        postId: post._id,
+    });
 };
 
 interface PostFetchingBody extends Express.Request {
@@ -62,7 +65,6 @@ const postFetchPostsByTag = async (
     next: NextFunction
 ) => {
     const page = Number(req.body.page);
-    const postCount = await Post.count();
     const posts = await Post.find({ tags: `#${req.body.tag}` })
         .select("userId postText tags createdAt updatedAt imgUrl likes")
         .populate<{
@@ -76,7 +78,7 @@ const postFetchPostsByTag = async (
             posts,
             ok: true,
             message: "Posts founded successfully.",
-            lastPage: (page * 40) / postCount < 1 ? true : false,
+            lastPage: (page * 40) / posts.length < 1 ? true : false,
         });
     } else {
         return res.status(404).json({
@@ -250,7 +252,6 @@ const postFetchPopularPosts = async (
     next: NextFunction
 ) => {
     const page = Number(req.body.page);
-    const postCount = await Post.count();
     const posts = await Post.find({
         createdAt: { $gte: req.body.popularTime },
     })
@@ -266,7 +267,7 @@ const postFetchPopularPosts = async (
             posts,
             ok: true,
             message: "Posts founded successfully.",
-            lastPage: (page * 40) / postCount < 1 ? true : false,
+            lastPage: (page * 40) / posts.length < 1 ? true : false,
         });
     } else {
         return res.status(404).json({
@@ -277,6 +278,39 @@ const postFetchPopularPosts = async (
         });
     }
 };
+
+interface FetchPostByIdBody extends Request {
+    body: {
+        id: string;
+    };
+}
+
+const postFetchPostById = async (
+    req: FetchPostByIdBody,
+    res: Response,
+    next: NextFunction
+) => {
+    if (mongoose.Types.ObjectId.isValid(req.body.id)) {
+        const post = await Post.findOne({ _id: req.body.id })
+            .select("userId postText tags createdAt updatedAt imgUrl likes")
+            .populate<{
+                userId: IUser;
+            }>("userId", "username avatarUrl");
+        if (post) {
+            return res
+                .status(200)
+                .json({ ok: true, message: "Post founded", post: post });
+        } else {
+            return res
+                .status(200)
+                .json({ ok: false, message: "Post not founded", post: {} });
+        }
+    } else {
+        return res
+            .status(400)
+            .json({ ok: false, message: "Bad format id", post: {} });
+    }
+};
 export default {
     postCreatePost,
     postFetchPostsByTag,
@@ -285,4 +319,5 @@ export default {
     postLikePost,
     postCheckLikeStatusById,
     postFetchPopularPosts,
+    postFetchPostById,
 };
