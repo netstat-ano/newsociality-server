@@ -6,6 +6,7 @@ import jsonwebtoken from "jsonwebtoken";
 import formatValidationErrors from "../utils/formatValidationErrors";
 import path from "path";
 import AuthenticationRequest from "../interfaces/AuthenticationRequest";
+import mongoose from "mongoose";
 interface CreateUserRequst extends Request {
     body: {
         email: string;
@@ -170,15 +171,43 @@ const postChangeAvatar = async (
     if (req.user && req.file.path) {
         req.user.avatarUrl = req.file.path;
         await req.user.save();
-        return res
-            .status(200)
-            .json({
-                message: "Avatar changed.",
-                ok: true,
-                path: req.file.path,
-            });
+        return res.status(200).json({
+            message: "Avatar changed.",
+            ok: true,
+            path: req.file.path,
+        });
     }
 
     return res.status(200).json({ message: "Avatar not changed.", ok: false });
 };
-export default { postCreateUser, postLoginUser, postChangeAvatar };
+
+interface FetchUserByIdBody {
+    body: {
+        userId: string;
+    };
+}
+
+const postFetchUserById = async (
+    req: FetchUserByIdBody,
+    res: Response,
+    next: NextFunction
+) => {
+    if (mongoose.Types.ObjectId.isValid(req.body.userId)) {
+        const user = await User.findById(req.body.userId).select(
+            "username password avatarUrl"
+        );
+        return res.status(200).json({
+            message: "User founded",
+            ok: true,
+            user,
+        });
+    } else {
+        return res.status(404).json({ message: "User not founded", ok: false });
+    }
+};
+export default {
+    postCreateUser,
+    postLoginUser,
+    postChangeAvatar,
+    postFetchUserById,
+};

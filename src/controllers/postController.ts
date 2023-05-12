@@ -5,7 +5,8 @@ import { validationResult } from "express-validator";
 import formatValidationErrors from "../utils/formatValidationErrors";
 import User, { IUser } from "../models/User";
 import { IComment } from "../models/Comment";
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
+import checkIfLastPage from "../utils/checkIfLastPage";
 import { ObjectId } from "mongoose";
 interface PostCreationBody extends AuthenticationRequest {
     body: {
@@ -65,6 +66,7 @@ const postFetchPostsByTag = async (
     next: NextFunction
 ) => {
     const page = Number(req.body.page);
+    const postsCount = await Post.countDocuments({ tags: `#${req.body.tag}` });
     const posts = await Post.find({ tags: `#${req.body.tag}` })
         .select("userId postText tags createdAt updatedAt imgUrl likes")
         .populate<{
@@ -78,7 +80,7 @@ const postFetchPostsByTag = async (
             posts,
             ok: true,
             message: "Posts founded successfully.",
-            lastPage: (page * 40) / posts.length < 1 ? true : false,
+            lastPage: checkIfLastPage(page, postsCount, 40),
         });
     } else {
         return res.status(404).json({
@@ -252,6 +254,9 @@ const postFetchPopularPosts = async (
     next: NextFunction
 ) => {
     const page = Number(req.body.page);
+    const postsCount = await Post.countDocuments({
+        createdAt: { $gte: req.body.popularTime },
+    });
     const posts = await Post.find({
         createdAt: { $gte: req.body.popularTime },
     })
@@ -267,7 +272,7 @@ const postFetchPopularPosts = async (
             posts,
             ok: true,
             message: "Posts founded successfully.",
-            lastPage: (page * 40) / posts.length < 1 ? true : false,
+            lastPage: checkIfLastPage(page, postsCount, 40),
         });
     } else {
         return res.status(404).json({
@@ -311,6 +316,101 @@ const postFetchPostById = async (
             .json({ ok: false, message: "Bad format id", post: {} });
     }
 };
+
+interface FetchPostsByUserId {
+    body: {
+        id: string;
+        page: string;
+    };
+}
+
+const postFetchPostsByUserId = async (
+    req: FetchPostsByUserId,
+    res: Response,
+    next: NextFunction
+) => {
+    if (!req.body.page) {
+        var page = 0;
+    } else {
+        var page = Number(req.body.page);
+    }
+    if (mongoose.Types.ObjectId.isValid(req.body.id)) {
+        const postsCount = await Post.countDocuments({ userId: req.body.id });
+        const posts = await Post.find({ userId: req.body.id })
+            .select("userId postText tags createdAt updatedAt imgUrl likes")
+            .populate<{
+                userId: IUser;
+            }>("userId", "username avatarUrl")
+            .skip(page * 40)
+            .limit(40)
+            .sort({ createdAt: "descending" });
+        return res.status(200).json({
+            message: "Post founded",
+            ok: true,
+            posts,
+            lastPage: checkIfLastPage(page, postsCount, 40),
+        });
+    } else {
+        return res.status(400).json({
+            message: "Bad format of id",
+            ok: false,
+            posts: [],
+            lastPage: true,
+        });
+    }
+};
+
+const loopThroughLikedPosts = async (likedPosts: any[]) => {
+    return new Promise(async (resolve) => {
+        const array: any[] = [];
+        for (const id of likedPosts) {
+            const post = await Post.findById(id)
+                .select("userId postText tags createdAt updatedAt imgUrl likes")
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl");
+            array.push(post);
+        }
+        resolve(array);
+    });
+};
+
+const postFetchLikedPostsByUserId = async (
+    req: FetchPostsByUserId,
+    res: Response,
+    next: NextFunction
+) => {
+    let page = 0;
+    if (req.body.page) {
+        page = Number(req.body.page);
+    }
+    if (mongoose.Types.ObjectId.isValid(req.body.id)) {
+        const user = await User.findById(req.body.id);
+        const likedPosts = user?.likedPost.slice(page * 40, page * 40 + 40);
+        if (likedPosts) {
+            const arrayOfLikedPosts = await loopThroughLikedPosts(likedPosts);
+            return res.status(200).json({
+                ok: true,
+                message: "Posts founded",
+                posts: arrayOfLikedPosts,
+                lastPage: checkIfLastPage(page, likedPosts.length, 40),
+            });
+        }
+        return res.status(400).json({
+            ok: false,
+            message: "Something went wrong",
+            posts: [],
+            lastPage: true,
+        });
+    } else {
+        return res.status(400).json({
+            ok: false,
+            message: "Invalid format of user id",
+            posts: [],
+            lastPage: true,
+        });
+    }
+};
 export default {
     postCreatePost,
     postFetchPostsByTag,
@@ -320,4 +420,6 @@ export default {
     postCheckLikeStatusById,
     postFetchPopularPosts,
     postFetchPostById,
+    postFetchPostsByUserId,
+    postFetchLikedPostsByUserId,
 };

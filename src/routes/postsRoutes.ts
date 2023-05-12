@@ -35,4 +35,12 @@ postRoutes.post(
 );
 postRoutes.post("/fetch-popular-posts", postController.postFetchPopularPosts);
 postRoutes.post("/fetch-post-by-id", postController.postFetchPostById);
+postRoutes.post(
+    "/fetch-posts-by-user-id",
+    postController.postFetchPostsByUserId
+);
+postRoutes.post(
+    "/fetch-liked-posts-by-user-id",
+    postController.postFetchLikedPostsByUserId
+);
 export default postRoutes;

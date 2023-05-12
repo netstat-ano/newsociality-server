@@ -28,6 +28,6 @@ userRoutes.post(
     ],
     userController.postLoginUser
 );
-
+userRoutes.post("/fetch-user-by-id", userController.postFetchUserById);
 userRoutes.post("/change-avatar", isAuth, userController.postChangeAvatar);
 export default userRoutes;
