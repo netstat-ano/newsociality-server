@@ -360,26 +360,27 @@ const postFetchPostsByUserId = async (
     }
 };
 
-const loopThroughLikedPosts = async (likedPosts: any[]) => {
-    return new Promise(async (resolve) => {
-        const array: any[] = [];
-        for (const id of likedPosts) {
-            const post = await Post.findById(id)
-                .select("userId postText tags createdAt updatedAt imgUrl likes")
-                .populate<{
-                    userId: IUser;
-                }>("userId", "username avatarUrl");
-            array.push(post);
-        }
-        resolve(array);
-    });
-};
-
 const postFetchLikedPostsByUserId = async (
     req: FetchPostsByUserId,
     res: Response,
     next: NextFunction
 ) => {
+    const loopThroughLikedPosts = async (likedPosts: any[]) => {
+        return new Promise(async (resolve) => {
+            const array: any[] = [];
+            for (const id of likedPosts) {
+                const post = await Post.findById(id)
+                    .select(
+                        "userId postText tags createdAt updatedAt imgUrl likes"
+                    )
+                    .populate<{
+                        userId: IUser;
+                    }>("userId", "username avatarUrl");
+                array.push(post);
+            }
+            resolve(array);
+        });
+    };
     let page = 0;
     if (req.body.page) {
         page = Number(req.body.page);

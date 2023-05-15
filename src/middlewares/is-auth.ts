@@ -10,14 +10,19 @@ const isAuth = async (
     next: NextFunction
 ) => {
     const token = req.get("Authorization")?.split(" ")[1];
+    let decodedToken;
     if (token) {
         try {
-            var decodedToken = jws.verify(
+            decodedToken = jws.verify(
                 token,
                 process.env.SECRET_KEY!
             ) as UserJwtPayload;
         } catch (err) {
-            throw err;
+            if (err) {
+                return res
+                    .status(422)
+                    .json({ message: "Not authenticated.", ok: false });
+            }
         }
         if (!decodedToken) {
             return res
