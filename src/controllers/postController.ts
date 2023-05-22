@@ -36,6 +36,7 @@ const postCreatePost = async (
             tags: tags,
             imgUrl: undefined,
             postText: req.body.postText,
+            isNews: false,
         });
     } else {
         var post = new Post({
@@ -43,6 +44,7 @@ const postCreatePost = async (
             tags: tags,
             imgUrl: `/public/images/${req.file?.filename}`,
             postText: req.body.postText,
+            isNews: false,
         });
     }
     await post.save();
@@ -57,6 +59,7 @@ interface PostFetchingBody extends Express.Request {
     body: {
         tag: string;
         page: string;
+        type: string;
     };
 }
 
@@ -67,14 +70,30 @@ const postFetchPostsByTag = async (
 ) => {
     const page = Number(req.body.page);
     const postsCount = await Post.countDocuments({ tags: `#${req.body.tag}` });
-    const posts = await Post.find({ tags: `#${req.body.tag}` })
-        .select("userId postText tags createdAt updatedAt imgUrl likes")
-        .populate<{
-            userId: IUser;
-        }>("userId", "username avatarUrl")
-        .skip(page * 40)
-        .limit(40)
-        .sort({ createdAt: "descending" });
+    if (req.body.type === "news") {
+        var posts = await Post.find({ tags: `#${req.body.tag}`, isNews: true })
+            .select(
+                "userId newsUrl tags createdAt updatedAt newsDescription newsUrl likes"
+            )
+            .populate<{
+                userId: IUser;
+            }>("userId", "username avatarUrl")
+            .skip(page * 40)
+            .limit(40)
+            .sort({ createdAt: "descending" });
+    } else {
+        var posts = await Post.find({
+            tags: `#${req.body.tag}`,
+            $or: [{ isNews: undefined }, { isNews: false }],
+        })
+            .select("userId postText tags createdAt updatedAt imgUrl likes")
+            .populate<{
+                userId: IUser;
+            }>("userId", "username avatarUrl")
+            .skip(page * 40)
+            .limit(40)
+            .sort({ createdAt: "descending" });
+    }
     if (posts.length > 0) {
         return res.status(200).json({
             posts,
@@ -245,6 +264,7 @@ interface FetchPopularPostsBody extends AuthenticationRequest {
     body: {
         page?: string;
         popularTime: Date;
+        type: string;
     };
 }
 
@@ -253,32 +273,60 @@ const postFetchPopularPosts = async (
     res: Response,
     next: NextFunction
 ) => {
-    const page = Number(req.body.page);
-    const postsCount = await Post.countDocuments({
-        createdAt: { $gte: req.body.popularTime },
-    });
-    const posts = await Post.find({
-        createdAt: { $gte: req.body.popularTime },
-    })
-        .select("userId postText tags createdAt updatedAt imgUrl likes")
-        .populate<{
-            userId: IUser;
-        }>("userId", "username avatarUrl")
-        .skip(page * 40)
-        .limit(40)
-        .sort({ likes: "descending" });
-    if (posts.length > 0) {
-        return res.status(200).json({
-            posts,
-            ok: true,
-            message: "Posts founded successfully.",
-            lastPage: checkIfLastPage(page, postsCount, 40),
+    try {
+        const page = Number(req.body.page);
+        const postsCount = await Post.countDocuments({
+            createdAt: { $gte: req.body.popularTime },
         });
-    } else {
-        return res.status(404).json({
-            posts: [],
+        if (req.body.type === "post") {
+            var posts = await Post.find({
+                createdAt: { $gte: req.body.popularTime },
+                isNews: false,
+            })
+                .select(
+                    "userId postText tags createdAt updatedAt imgUrl likes newsDescription newsUrl newsTitle"
+                )
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ likes: "descending" });
+        } else {
+            var posts = await Post.find({
+                createdAt: { $gte: req.body.popularTime },
+                isNews: true,
+            })
+                .select(
+                    "userId postText tags createdAt updatedAt imgUrl likes newsDescription newsUrl newsTitle"
+                )
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ likes: "descending" });
+        }
+        if (posts.length > 0) {
+            return res.status(200).json({
+                posts,
+                ok: true,
+                message: "Posts founded successfully.",
+                lastPage: checkIfLastPage(page, postsCount, 40),
+            });
+        } else {
+            return res.status(404).json({
+                posts: [],
+                ok: false,
+                message: "Posts not founded.",
+                lastPage: true,
+            });
+        }
+    } catch (err: any) {
+        return res.status(400).json({
             ok: false,
-            message: "Posts not founded.",
+            message: err.message,
+            posts: [],
             lastPage: true,
         });
     }
@@ -287,6 +335,7 @@ const postFetchPopularPosts = async (
 interface FetchPostByIdBody extends Request {
     body: {
         id: string;
+        type: string;
     };
 }
 
@@ -296,11 +345,21 @@ const postFetchPostById = async (
     next: NextFunction
 ) => {
     if (mongoose.Types.ObjectId.isValid(req.body.id)) {
-        const post = await Post.findOne({ _id: req.body.id })
-            .select("userId postText tags createdAt updatedAt imgUrl likes")
-            .populate<{
-                userId: IUser;
-            }>("userId", "username avatarUrl");
+        if (req.body.type === "post") {
+            var post = await Post.findOne({ _id: req.body.id, isNews: false })
+                .select("userId postText tags createdAt updatedAt imgUrl likes")
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl");
+        } else {
+            var post = await Post.findOne({ _id: req.body.id })
+                .select(
+                    "userId newsUrl tags createdAt updatedAt newsDescription newsTitle likes"
+                )
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl");
+        }
         if (post) {
             return res
                 .status(200)
@@ -412,6 +471,46 @@ const postFetchLikedPostsByUserId = async (
         });
     }
 };
+interface CreateNewsRequest extends AuthenticationRequest {
+    body: {
+        newsDescription: string;
+        newsUrl: string;
+        tags: string;
+        newsTitle: string;
+    };
+}
+const postCreateNews = async (
+    req: CreateNewsRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        const formattedErrors = formatValidationErrors(errors.array());
+        return res
+            .status(422)
+            .json({ ok: false, message: formattedErrors, newsId: "" });
+    }
+    const news = new Post({
+        userId: req.user?._id,
+        newsDescription: req.body.newsDescription,
+        newsUrl: req.body.newsUrl,
+        tags: req.body.tags,
+        newsTitle: req.body.newsTitle,
+        isNews: true,
+    });
+    try {
+        await news.save();
+        return res
+            .status(200)
+            .json({ ok: true, message: "News created.", newsId: news._id });
+    } catch (err: any) {
+        return res
+            .status(400)
+            .json({ ok: false, message: err.message, newsId: "" });
+    }
+};
 export default {
     postCreatePost,
     postFetchPostsByTag,
@@ -423,4 +522,5 @@ export default {
     postFetchPostById,
     postFetchPostsByUserId,
     postFetchLikedPostsByUserId,
+    postCreateNews,
 };

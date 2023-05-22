@@ -14,6 +14,24 @@ postRoutes.post(
     postController.postCreatePost
 );
 postRoutes.post(
+    "/create-news",
+    [
+        body("newsDescription")
+            .isLength({ min: 8 })
+            .withMessage("Description must contain min 8 characters."),
+        body("newsUrl")
+            .matches(
+                /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi
+            )
+            .withMessage("Bad url format."),
+        body("newsTitle")
+            .isLength({ min: 8 })
+            .withMessage("Title must contain min 8 characters."),
+    ],
+    isAuth,
+    postController.postCreateNews
+);
+postRoutes.post(
     "/create-comment",
     body("commentText")
         .trim()

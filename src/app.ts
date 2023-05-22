@@ -6,7 +6,9 @@ import postRoutes from "./routes/postsRoutes";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
+import newsRoutes from "./routes/newsRoutes";
 import commentsRoutes from "./routes/commentsRoutes";
+import fetch from "node-fetch";
 const app = async () => {
     const app = express();
     connect();
@@ -44,6 +46,7 @@ const app = async () => {
         next();
     });
     app.use(bodyParser.json());
+    app.use("/news", postRoutes);
     app.use(
         "/comment",
         multer({ storage: storage }).single("image"),
