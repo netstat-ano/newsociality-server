@@ -380,6 +380,7 @@ interface FetchPostsByUserId {
     body: {
         id: string;
         page: string;
+        type: string;
     };
 }
 
@@ -394,15 +395,38 @@ const postFetchPostsByUserId = async (
         var page = Number(req.body.page);
     }
     if (mongoose.Types.ObjectId.isValid(req.body.id)) {
-        const postsCount = await Post.countDocuments({ userId: req.body.id });
-        const posts = await Post.find({ userId: req.body.id })
-            .select("userId postText tags createdAt updatedAt imgUrl likes")
-            .populate<{
-                userId: IUser;
-            }>("userId", "username avatarUrl")
-            .skip(page * 40)
-            .limit(40)
-            .sort({ createdAt: "descending" });
+        if (req.body.type === "news") {
+            var postsCount = await Post.countDocuments({
+                userId: req.body.id,
+                isNews: true,
+            });
+            var posts = await Post.find({ userId: req.body.id, isNews: true })
+                .select(
+                    "userId newsUrl tags createdAt updatedAt newsDescription newsTitle likes isNews"
+                )
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ createdAt: "descending" });
+        } else {
+            var postsCount = await Post.countDocuments({
+                userId: req.body.id,
+                $or: [{ isNews: false }, { isNews: undefined }],
+            });
+            var posts = await Post.find({
+                userId: req.body.id,
+                $or: [{ isNews: false }, { isNews: undefined }],
+            })
+                .select("userId postText tags createdAt updatedAt imgUrl likes")
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ createdAt: "descending" });
+        }
         return res.status(200).json({
             message: "Post founded",
             ok: true,
@@ -430,7 +454,7 @@ const postFetchLikedPostsByUserId = async (
             for (const id of likedPosts) {
                 const post = await Post.findById(id)
                     .select(
-                        "userId postText tags createdAt updatedAt imgUrl likes"
+                        "userId postText tags createdAt updatedAt imgUrl likes isNews newsUrl newsDescription newsTitle"
                     )
                     .populate<{
                         userId: IUser;
