@@ -4,10 +4,8 @@ import Post from "../models/Post";
 import { validationResult } from "express-validator";
 import formatValidationErrors from "../utils/formatValidationErrors";
 import User, { IUser } from "../models/User";
-import { IComment } from "../models/Comment";
 import mongoose, { mongo } from "mongoose";
 import checkIfLastPage from "../utils/checkIfLastPage";
-import { ObjectId } from "mongoose";
 interface PostCreationBody extends AuthenticationRequest {
     body: {
         postText: string;
@@ -69,11 +67,11 @@ const postFetchPostsByTag = async (
     next: NextFunction
 ) => {
     const page = Number(req.body.page);
-    const postsCount = await Post.countDocuments({ tags: `#${req.body.tag}` });
+
     if (req.body.type === "news") {
         if (typeof req.body.tag === "object") {
             const tags = req.body.tag.map((value) => `#${value}`);
-
+            var postsCount = await Post.countDocuments({ tags: { $in: tags } });
             var posts = await Post.find({
                 tags: { $in: tags },
                 isNews: true,
@@ -88,6 +86,10 @@ const postFetchPostsByTag = async (
                 .limit(40)
                 .sort({ createdAt: "descending" });
         } else {
+            var postsCount = await Post.countDocuments({
+                tags: `#${req.body.tag}`,
+                isNews: true,
+            });
             var posts = await Post.find({
                 tags: `#${req.body.tag}`,
                 isNews: true,
@@ -95,6 +97,41 @@ const postFetchPostsByTag = async (
                 .select(
                     "userId newsUrl tags createdAt updatedAt newsDescription newsUrl likes"
                 )
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ createdAt: "descending" });
+        }
+    } else if (req.body.type === "posts") {
+        if (typeof req.body.tag === "object") {
+            const tags = req.body.tag.map((value) => `#${value}`);
+            var postsCount = await Post.countDocuments({
+                tags: { $in: tags },
+                $or: [{ isNews: undefined }, { isNews: false }],
+            });
+            var posts = await Post.find({
+                tags: { $in: tags },
+                $or: [{ isNews: undefined }, { isNews: false }],
+            })
+                .select("userId postText tags createdAt updatedAt imgUrl likes")
+                .populate<{
+                    userId: IUser;
+                }>("userId", "username avatarUrl")
+                .skip(page * 40)
+                .limit(40)
+                .sort({ createdAt: "descending" });
+        } else {
+            var postsCount = await Post.countDocuments({
+                tags: `#${req.body.tag}`,
+                $or: [{ isNews: undefined }, { isNews: false }],
+            });
+            var posts = await Post.find({
+                tags: `#${req.body.tag}`,
+                $or: [{ isNews: undefined }, { isNews: false }],
+            })
+                .select("userId postText tags createdAt updatedAt imgUrl likes")
                 .populate<{
                     userId: IUser;
                 }>("userId", "username avatarUrl")
@@ -103,33 +140,12 @@ const postFetchPostsByTag = async (
                 .sort({ createdAt: "descending" });
         }
     } else {
-        if (typeof req.body.tag === "object") {
-            const tags = req.body.tag.map((value) => `#${value}`);
-
-            var posts = await Post.find({
-                tags: { $in: tags },
-                $or: [{ isNews: undefined }, { isNews: false }],
-            })
-                .select("userId postText tags createdAt updatedAt imgUrl likes")
-                .populate<{
-                    userId: IUser;
-                }>("userId", "username avatarUrl")
-                .skip(page * 40)
-                .limit(40)
-                .sort({ createdAt: "descending" });
-        } else {
-            var posts = await Post.find({
-                tags: `#${req.body.tag}`,
-                $or: [{ isNews: undefined }, { isNews: false }],
-            })
-                .select("userId postText tags createdAt updatedAt imgUrl likes")
-                .populate<{
-                    userId: IUser;
-                }>("userId", "username avatarUrl")
-                .skip(page * 40)
-                .limit(40)
-                .sort({ createdAt: "descending" });
-        }
+        return res.status(400).json({
+            ok: false,
+            message: "Bad request",
+            posts: [],
+            lastPage: true,
+        });
     }
     if (posts.length > 0) {
         return res.status(200).json({
