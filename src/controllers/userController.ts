@@ -205,9 +205,34 @@ const postFetchUserById = async (
         return res.status(404).json({ message: "User not founded", ok: false });
     }
 };
+const postFetchFollowedTagsById = async (
+    req: FetchUserByIdBody,
+    res: Response,
+    next: NextFunction
+) => {
+    if (mongoose.Types.ObjectId.isValid(req.body.userId)) {
+        const user = await User.findById(req.body.userId);
+        if (user) {
+            return res.status(200).json({
+                message: "User founded",
+                ok: true,
+                tags: user.followedTags,
+            });
+        } else {
+            return res
+                .status(400)
+                .json({ ok: false, message: "User not founded", tags: [] });
+        }
+    } else {
+        return res
+            .status(404)
+            .json({ message: "ObjectID is invalid", ok: false, tags: [] });
+    }
+};
 export default {
     postCreateUser,
     postLoginUser,
     postChangeAvatar,
     postFetchUserById,
+    postFetchFollowedTagsById,
 };

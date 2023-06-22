@@ -61,4 +61,5 @@ postRoutes.post(
     "/fetch-liked-posts-by-user-id",
     postController.postFetchLikedPostsByUserId
 );
+postRoutes.post("/follow-tag", isAuth, postController.postFollowTag);
 export default postRoutes;

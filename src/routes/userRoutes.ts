@@ -30,4 +30,9 @@ userRoutes.post(
 );
 userRoutes.post("/fetch-user-by-id", userController.postFetchUserById);
 userRoutes.post("/change-avatar", isAuth, userController.postChangeAvatar);
+userRoutes.post(
+    "/fetch-followed-tags-by-user-id",
+    isAuth,
+    userController.postFetchFollowedTagsById
+);
 export default userRoutes;
