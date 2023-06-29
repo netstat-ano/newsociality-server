@@ -512,7 +512,9 @@ const postFetchLikedPostsByUserId = async (
                     .populate<{
                         userId: IUser;
                     }>("userId", "username avatarUrl");
-                array.push(post);
+                if (post) {
+                    array.push(post);
+                }
             }
             resolve(array);
         });
