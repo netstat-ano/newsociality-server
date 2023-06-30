@@ -622,6 +622,24 @@ const postFollowTag = async (
             .json({ ok: false, message: "Not authenticated" });
     }
 };
+interface DeletePostBody {
+    body: {
+        id: string;
+    };
+}
+const postDeletePost = async (
+    req: DeletePostBody,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const post = Post.findById(req.body.id);
+        await post.deleteOne();
+        return res.status(200).json({ ok: true, message: "Post deleted" });
+    } catch (err) {
+        res.status(400).json({ ok: false, message: "error" });
+    }
+};
 export default {
     postCreatePost,
     postFetchPostsByTag,
@@ -635,4 +653,5 @@ export default {
     postFetchLikedPostsByUserId,
     postCreateNews,
     postFollowTag,
+    postDeletePost,
 };

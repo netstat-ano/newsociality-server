@@ -62,4 +62,5 @@ postRoutes.post(
     postController.postFetchLikedPostsByUserId
 );
 postRoutes.post("/follow-tag", isAuth, postController.postFollowTag);
+postRoutes.post("/delete-post", isAuth, postController.postDeletePost);
 export default postRoutes;
