@@ -609,7 +609,7 @@ const postFollowTag = async (
                 .json({ ok: true, message: `Tag #${req.body.tag} followed` });
         } else {
             req.user.followedTags = req.user.followedTags.filter(
-                (tag) => tag === req.query.tag
+                (tag) => tag !== req.body.tag
             );
             await req.user.save();
             return res
@@ -622,7 +622,7 @@ const postFollowTag = async (
             .json({ ok: false, message: "Not authenticated" });
     }
 };
-interface DeletePostBody {
+interface DeletePostBody extends AuthenticationRequest {
     body: {
         id: string;
     };
@@ -633,9 +633,17 @@ const postDeletePost = async (
     next: NextFunction
 ) => {
     try {
-        const post = Post.findById(req.body.id);
-        await post.deleteOne();
-        return res.status(200).json({ ok: true, message: "Post deleted" });
+        const post = await Post.findById(req.body.id);
+        if (post && post.userId === req.userId) {
+            await post.deleteOne();
+            return res.status(200).json({ ok: true, message: "Post deleted" });
+        } else {
+            return res.status(400).json({
+                ok: false,
+                message:
+                    "This post is not exist already or you are not authorized.",
+            });
+        }
     } catch (err) {
         res.status(400).json({ ok: false, message: "error" });
     }
